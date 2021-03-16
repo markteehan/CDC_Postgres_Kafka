@@ -1,0 +1,103 @@
+version: "3"
+services:
+  connect-avro:
+     image: confluentinc/cp-kafka-connect:latest
+     container_name: connect-avro
+     ports:
+       - 8083:8083
+     extra_hosts:
+       - "dockerhost:$DOCKERHOST"
+     volumes:
+       - data:/var/tmp
+     environment:
+       CONNECT_OFFSET_FLUSH_TIMEOUT_MS: 40000
+       CONNECT_CUB_KAFKA_TIMEOUT: 300
+       CONNECT_BOOTSTRAP_SERVERS:                ${CCLOUD_BOOTSTRAP_SERVERS}
+       CONNECT_PRODUCER_BOOTSTRAP_SERVERS:       ${CCLOUD_BOOTSTRAP_SERVERS}
+       CONNECT_CONSUMER_BOOTSTRAP_SERVERS:       ${CCLOUD_BOOTSTRAP_SERVERS}
+       CONNECT_REPORTER_ADMIN_BOOTSTRAP_SERVERS: ${CCLOUD_BOOTSTRAP_SERVERS}
+       CONNECT_SASL_JAAS_CONFIG:                 ${CCLOUD_SASL}
+       CONNECT_PRODUCER_SASL_JAAS_CONFIG:        ${CCLOUD_SASL}
+       CONNECT_CONSUMER_SASL_JAAS_CONFIG:        ${CCLOUD_SASL}
+       CONNECT_REPORTER_ADMIN_SASL_JAAS_CONFIG:  ${CCLOUD_SASL}
+       CONNECT_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM:                https
+       CONNECT_PRODUCER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM:       https
+       CONNECT_CONSUMER_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM:       https
+       CONNECT_REPORTER_ADMIN_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: https
+       CONNECT_SECURITY_PROTOCOL:                SASL_SSL
+       CONNECT_PRODUCER_SECURITY_PROTOCOL:       SASL_SSL
+       CONNECT_CONSUMER_SECURITY_PROTOCOL:       SASL_SSL
+       CONNECT_REPORTER_ADMIN_SECURITY_PROTOCOL: SASL_SSL
+       CONNECT_SASL_MECHANISM:                PLAIN
+       CONNECT_PRODUCER_SASL_MECHANISM:       PLAIN
+       CONNECT_CONSUMER_SASL_MECHANISM:       PLAIN
+       CONNECT_REPORTER_ADMIN_SASL_MECHANISM: PLAIN
+       CONNECT_REQUEST_TIMEOUT_MS:            30000
+       CONNECT_PRODUCER_REQUEST_TIMEOUT_MS:   30000
+       CONNECT_CONSUMER_REQUEST_TIMEOUT_MS:   30000
+       CONNECT_RETRY_BACKOFF_MS:              500
+       CONNECT_PRODUCER_RETRY_BACKOFF_MS:     500
+       CONNECT_CONSUMER_RETRY_BACKOFF_MS:     500
+       CONNECT_VALUE_CONVERTER_BASIC_AUTH_CREDENTIALS_SOURCE: USER_INFO
+       CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: $SR_APIKEY:$SR_SECRET
+       CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: $SR_URL
+       CONNECT_KEY_CONVERTER_BASIC_AUTH_CREDENTIALS_SOURCE: USER_INFO
+       CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO: $SR_APIKEY:$SR_SECRET
+       CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: $SR_URL
+       CONNECT_TOPIC_CREATION_DEFAULT_PARTITIONS: 1
+       CONNECT_TOPIC_CREATION_DEFAULT_COMPRESSION_TYPE: 'lz4'
+       CONNECT_REST_ADVERTISED_HOST_NAME: 'connect-avro'
+       CONNECT_REST_PORT: 8083
+       CONNECT_GROUP_ID: connect-avro
+       CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+       CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 3
+       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 3
+       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 3
+       CONNECT_CONFIG_STORAGE_TOPIC: connect-avro-config
+       CONNECT_OFFSET_STORAGE_TOPIC: connect-avro-offset
+       CONNECT_STATUS_STORAGE_TOPIC: connect-avro-status
+       #CONNECT_KEY_CONVERTER:   org.apache.kafka.connect.storage.StringConverter
+       CONNECT_KEY_CONVERTER:   io.confluent.connect.avro.AvroConverter
+       CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+       CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: 'true'
+       CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE:   'true'
+       CONNECT_PLUGIN_PATH: '/usr/share/java,/usr/share/confluent-hub-components/'
+       CLASSPATH:            /usr/share/java/monitoring-interceptors/monitoring-interceptors-latest-beta1-SNAPSHOT.jar
+     command:
+       - bash
+       - -c
+       - |
+         confluent-hub install --no-prompt debezium/debezium-connector-postgresql:latest
+         echo "..installed Debezium CDC connector for Postgres..."
+         sleep 2
+         /etc/confluent/docker/run &
+         echo "..sleeping to let Connect [AVRO] start up..."
+         sleep infinity
+
+  ksqldb1:
+    image: confluentinc/cp-ksqldb-server:6.0.0
+    hostname: ksqldb1
+    container_name: ksqldb1
+    ports:
+      - 8088:8088
+    environment:
+      KSQL_LISTENERS: http://0.0.0.0:8088
+      KSQL_BOOTSTRAP_SERVERS: ${CCLOUD_BOOTSTRAP_SERVERS}
+      KSQL_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: https
+      KSQL_SECURITY_PROTOCOL: SASL_SSL
+      KSQL_SASL_MECHANISM: PLAIN
+      KSQL_SASL_JAAS_CONFIG: ${CCLOUD_SASL}
+      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+      KSQL_KSQL_CONNECT_URL: http://connect-avro:8083
+      KSQL_REST_ADVERTISED_HOST_NAME: 'ksql1'
+      KSQL_KSQL_SERVICE_ID: cdc
+      KSQL_KSQL_INTERNAL_TOPIC_REPLICAS: 3
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_REPLICATION_FACTOR: 3
+      KSQL_KSQL_STREAMS_REPLICATION_FACTOR: 3
+      KSQL_KSQL_SINK_REPLICAS: 3
+      KSQL_LOG4J_ROOT_LOGLEVEL: INFO
+
+volumes:
+    data: {}
+

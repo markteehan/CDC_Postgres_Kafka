@@ -1,0 +1,19 @@
+{
+                     "name": "Metabase_Redshift_Sink",
+          "connector.class": "RedshiftSink",
+            "kafka.api.key": "",
+         "kafka.api.secret": "",
+        "input.data.format": "AVRO",
+      "aws.redshift.domain": "redshift-apac.XXX.ap-southeast-1.redshift.amazonaws.com",
+    "aws.redshift.database": "apac_redshift_db",
+        "aws.redshift.port": "5439",
+        "aws.redshift.user": "awsuser",
+    "aws.redshift.password": "",
+              "db.timezone": "Asia/Singapore",
+               "batch.size": "100",
+              "auto.create": "true",
+              "auto.evolve": "true",
+                "tasks.max": "1",
+                   "topics": "avro_activity,avro_data_migrations,avro_databasechangelog,avro_databasechangeloglock,avro_metabase_database,avro_metabase_field,avro_metabase_fieldvalues,avro_metabase_table,avro_permissions,avro_permissions_group,avro_qrtz_cron_triggers,avro_qrtz_fired_triggers,avro_qrtz_locks,avro_qrtz_scheduler_state,avro_setting,avro_task_history"
+}
+

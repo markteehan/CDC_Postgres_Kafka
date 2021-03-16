@@ -1,0 +1,32 @@
+export KSQL_JVM_PERFORMANCE_OPTS="-server -XX:+CMSClassUnloadingEnabled -XX:+CMSScavengeBeforeRemark -XX:+ExplicitGCInvokesConcurrent -XX:NewRatio=1 -Djava.awt.headless=false"
+
+
+echo "set 'ksql.connect.url'='http://connect-avro:8083';" | ksql  http://127.0.0.1:8088
+
+echo "Using the Kafka Connect server that serializes as Avro"
+
+echo "CREATE Source CONNECTOR metabase_cdc WITH ( \
+                                     'connector.class'= 'io.debezium.connector.postgresql.PostgresConnector', \
+                                   'database.hostname'= 'dockerhost',     \
+                                'database.server.name'= 'postgres-db',    \
+                                       'database.port'= '5432',           \
+                                       'database.user'= 'metabase',       \
+                                   'database.password'= 'metabase',       \
+                                     'database.dbname'= 'metabase_app',   \
+                               'decimal.handling.mode'= 'string',         \
+                                           'slot.name'= 'replslot_avro',  \
+                                    'schema.whitelist'= 'public',         \
+                              'include.schema.changes'= 'true',           \
+                                        'plugin.name' = 'pgoutput',       \
+                                           'tasks.max'= '1',              \
+                  'confluent.topic.replication.factor'= '3',              \
+              'topic.creation.redo.replication.factor'= '3',              \
+           'topic.creation.default.replication.factor'= '3',              \
+                   'topic.creation.default.partitions'= '1',              \
+                                          'transforms'= 'unwrap,dropPrefix', \
+                              'transforms.unwrap.type'= 'io.debezium.transforms.ExtractNewRecordState', \
+                          'transforms.dropPrefix.type'= 'org.apache.kafka.connect.transforms.RegexRouter', \
+                         'transforms.dropPrefix.regex'= 'postgres-db.public.(.*)', \
+                   'transforms.dropPrefix.replacement'= 'avro_\$1',       \
+               'topic.creation.default.cleanup.policy'=  'compact'  ); "| ksql http://127.0.0.1:8088
+
